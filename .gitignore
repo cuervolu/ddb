@@ -1,0 +1,16 @@
+target/
+
+.idea/
+.vscode/
+*.iml
+
+*.log
+.DS_Store
+Thumbs.db
+
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+
+.env
