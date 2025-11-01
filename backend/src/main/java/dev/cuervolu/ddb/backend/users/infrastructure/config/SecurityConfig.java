@@ -3,7 +3,8 @@ package dev.cuervolu.ddb.backend.users.infrastructure.config;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 import dev.cuervolu.ddb.backend.users.infrastructure.filters.JwtFilter;
-import dev.cuervolu.ddb.backend.users.infrastructure.services.JwtService;
+import dev.cuervolu.ddb.backend.users.infrastructure.oauth.CustomOAuth2UserService;
+import dev.cuervolu.ddb.backend.users.infrastructure.oauth.OAuth2LoginSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -28,28 +29,28 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
   private final JwtFilter jwtAuthFilter;
-  private final JwtService jwtService;
-  private final CorsConfigurationSource corsConfigurationSource;
+  private final CustomOAuth2UserService customOAuth2UserService;
+  private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
-  public SecurityConfig(JwtFilter jwtAuthFilter, JwtService jwtService,
-      CorsConfigurationSource corsConfigurationSource) {
+  public SecurityConfig(
+      JwtFilter jwtAuthFilter,
+      CustomOAuth2UserService customOAuth2UserService,
+      OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
     this.jwtAuthFilter = jwtAuthFilter;
-    this.jwtService = jwtService;
-    this.corsConfigurationSource = corsConfigurationSource;
+    this.customOAuth2UserService = customOAuth2UserService;
+    this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
   }
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http,
-      AuthenticationProvider authenticationProvider) throws Exception {
+      AuthenticationProvider authenticationProvider,
+      CorsConfigurationSource corsConfigurationSource) throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(
             req ->
                 req.requestMatchers(
                         "/auth/**",
-                        "/login",
-                        "/oauth2/**",
-                        "/login/**",
                         "/v2/api-docs",
                         "/v3/api-docs",
                         "/v3/api-docs/**",
@@ -65,16 +66,18 @@ public class SecurityConfig {
                     .permitAll()
                     .anyRequest()
                     .authenticated())
-        //       .oauth2Login(oauth2 -> oauth2
-//            .userInfoEndpoint(userInfo -> userInfo
-//                .userService(customOAuth2UserService)
-//                .oidcUserService(customOidcUserService)
-//            )
-//            .successHandler(conditionalOAuth2SuccessHandler())
-//            .authorizationEndpoint(authorization -> authorization
-//                .authorizationRequestRepository(pkceAuthorizationRequestRepository())
-//            )
-        //  )
+        .oauth2Login(oauth2 -> oauth2
+            .authorizationEndpoint(auth -> auth
+                .baseUri("/oauth2/authorization")
+            )
+            .redirectionEndpoint(redirect -> redirect
+                .baseUri("/login/oauth2/code/*")
+            )
+            .userInfoEndpoint(userInfo -> userInfo
+                .userService(customOAuth2UserService)
+            )
+            .successHandler(oAuth2LoginSuccessHandler)
+        )
         .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
         .authenticationProvider(authenticationProvider)
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

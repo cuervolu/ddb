@@ -12,6 +12,16 @@ spring:
       hibernate:
         format_sql: true
       database: postgresql
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope:
+              - user:email
+              - read:user
 logging:
   level:
     org:
@@ -29,3 +39,7 @@ application:
       expiration: 86400000 # a day
       refresh-token:
         expiration: 604800000 # 7 days
+  oauth2:
+    redirect-uri: "http://ddb-internal/oauth-success"
+  cors:
+    allowed-origins: http://localhost:3000, http://127.0.0.1:3000
